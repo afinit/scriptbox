@@ -20,7 +20,7 @@ def print_usage():
 def build_bam_index( map_file ):
   try:
     print "Starting bam index"
-    subprocess.check_call( 'java -Xmx4g -jar ~/src/picard-tools-1.119/BuildBamIndex.jar INPUT= ' + map_file, shell=True )
+    subprocess.check_call( 'java -Xmx4g -jar ~/src/picard-tools*/BuildBamIndex.jar INPUT= ' + map_file, shell=True )
   except subprocess.CalledProcessError as e:
     print 'Error: failed running picard-tools BuildBamIndex: ' + str(e.returncode)
     print_usage()
@@ -28,6 +28,12 @@ def build_bam_index( map_file ):
 
 def main( argv ):
   start_cmd = 0
+
+  # set tmp dir in user home directory
+  tmp_dir = os.path.expanduser('~') + os.sep + 'tmp'
+  if not os.path.isdir( tmp_dir ):
+    print 'Creating tmp directory: ' + tmp_dir
+    os.mkdir( tmp_dir )
 
   if len( argv ) < 2:
     print "Error: arguments missing"
@@ -57,7 +63,7 @@ def main( argv ):
   if not os.path.isfile(ref_file_base + '.dict'):
     print "Building dict index: " + ref_file_base + '.dict'
     try:
-      subprocess.check_call( 'java -jar ~/src/picard-tools-1.119/CreateSequenceDictionary.jar R= ' + ref_file + ' O= ' + ref_file_base + '.dict', shell=True )
+      subprocess.check_call( 'java -Djava.io.tmpdir=' + tmp_dir + ' -jar ~/src/picard-tools*/CreateSequenceDictionary.jar R= ' + ref_file + ' O= ' + ref_file_base + '.dict', shell=True )
     except subprocess.CalledProcessError as e:
       print 'Error: failed running picard-tools CreateSequenceDictionary: ' + str(e.returncode)
       print_usage()
@@ -78,7 +84,7 @@ def main( argv ):
     # MarkDuplicates
     try:
       print 'MarkDuplicates'
-      subprocess.check_call( 'java -Xmx4g -jar ~/src/picard-tools-1.119/MarkDuplicates.jar INPUT=' + map_file_base + '.bam OUTPUT=' + map_file_base + '.dedup.bam METRICS_FILE=' + map_file_base + '.metrics.txt MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000', shell=True )
+      subprocess.check_call( 'java -Djava.io.tmpdir=' + tmp_dir + ' -Xmx4g -jar ~/src/picard-tools*/MarkDuplicates.jar INPUT=' + map_file_base + '.bam OUTPUT=' + map_file_base + '.dedup.bam METRICS_FILE=' + map_file_base + '.metrics.txt MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000', shell=True )
     except subprocess.CalledProcessError as e:
       print 'Error: failed running picard-tools MarkDuplicates: ' + str(e.returncode)
       print_usage()
@@ -90,7 +96,7 @@ def main( argv ):
     # RealignerTargetCreator
     try:
       print 'RealignerTargetCreator'
-      subprocess.check_call( 'java -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R ' + ref_file + ' -o ' + map_file_base + '.list -I ' + map_file_base + '.dedup.bam', shell=True )
+      subprocess.check_call( 'java -Djava.io.tmpdir=' + tmp_dir + ' -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R ' + ref_file + ' -o ' + map_file_base + '.list -I ' + map_file_base + '.dedup.bam', shell=True )
     except subprocess.CalledProcessError as e:
       print 'Error: failed running GATK RealignerTargetCreator: ' + str(e.returncode)
       print_usage()
@@ -99,7 +105,7 @@ def main( argv ):
     # IndelRealigner
     try:
       print 'IndelRealigner'
-      subprocess.check_call( 'java -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T IndelRealigner -R ' + ref_file + ' -targetIntervals ' + map_file_base + '.list -I ' + map_file_base + '.dedup.bam -o ' + map_file_base + '.dedup.realign.bam', shell=True )
+      subprocess.check_call( 'java -Djava.io.tmpdir=' + tmp_dir + ' -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T IndelRealigner -R ' + ref_file + ' -targetIntervals ' + map_file_base + '.list -I ' + map_file_base + '.dedup.bam -o ' + map_file_base + '.dedup.realign.bam', shell=True )
     except subprocess.CalledProcessError as e:
       print 'Error: failed running GATK IndelRealigner: ' + str(e.returncode)
       print_usage()
@@ -110,7 +116,7 @@ def main( argv ):
   # HaplotypeCaller
   try:
     print 'HaplotypeCaller'
-    subprocess.check_call( 'java -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R ' + ref_file + ' -l INFO -I ' + map_file_base + '.dedup.realign.bam -o ' + output_file + '.vcf', shell=True )
+    subprocess.check_call( 'java -Djava.io.tmpdir=' + tmp_dir + ' -Xmx4g -jar ~/src/GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R ' + ref_file + ' -l INFO -I ' + map_file_base + '.dedup.realign.bam -o ' + output_file + '.vcf', shell=True )
   except subprocess.CalledProcessError as e:
     print 'Error: failed running GATK HaplotypeCaller: ' + str(e.returncode)
     print_usage()
