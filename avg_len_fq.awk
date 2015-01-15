@@ -1,5 +1,5 @@
 BEGIN { m=10000 }
-/^+$/ {getline; c+=1; len=length($0); s+=len;
+/^@$/ {getline; c+=1; len=length($0); s+=len; getline; getline;
         if( m>len ){
           m=len;
         }
