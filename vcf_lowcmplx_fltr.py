@@ -45,10 +45,10 @@ def main( prog_name, argv ):
   # check if input files exist
   invalid_file = False
   if not os.path.isfile( gff_file ):
-    print 'Error: {} does not exist'.format( gff_file )
+    print 'Error: {0} does not exist'.format( gff_file )
     invalid_file = True
   if not os.path.isfile( vcf_file ):
-    print 'Error: {} does not exist'.format( vcf_file )
+    print 'Error: {0} does not exist'.format( vcf_file )
     invalid_file = True
   if invalid_file:
     sys.exit(1)
@@ -64,7 +64,7 @@ def main( prog_name, argv ):
   vcf_header = []
 
   # read in lc_ranges from gff file
-  print 'READING {}'.format( gff_file )
+  print 'READING {0}'.format( gff_file )
   with open( gff_file, 'r' ) as gff_fh:
     line = gff_fh.readline().split()
     while line[0][0] == '#':
@@ -78,7 +78,7 @@ def main( prog_name, argv ):
       line = gff_fh.readline().split()
 
   # read in variants from vcf file
-  print 'READING {}'.format( vcf_file )
+  print 'READING {0}'.format( vcf_file )
   with open( vcf_file, 'r' ) as vcf_fh:
     line = vcf_fh.readline().split()
     while line[0][0] == '#':
