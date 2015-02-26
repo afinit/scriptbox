@@ -13,11 +13,11 @@ def read_dict_file(dict_file, dict_list, chrom_list):
         line = dict_fh.readline().split()
     
         while line != []: 
-        if line[0] == '@SQ':
-            chrom_vals = dict(keypairs.split(':',1) for keypairs in line[1:])
-            chrom_list.append(chrom_vals['SN'])
-            dict_list[chrom_vals['SN']] = chrom_vals['LN']
-        line = dict_fh.readline().split()
+            if line[0] == '@SQ':
+                chrom_vals = dict(keypairs.split(':',1) for keypairs in line[1:])
+                chrom_list.append(chrom_vals['SN'])
+                dict_list[chrom_vals['SN']] = chrom_vals['LN']
+            line = dict_fh.readline().split()
     print 'done reading'
 
 # read in variants from vcf file
@@ -61,20 +61,15 @@ def get_offsets( chrom_offset, vcf_file, chrom_list ):
             chrom_offset = eval(fh.readline())
 
 # build SNPs data structure and save it to file
-def build_snp_structure( chrom_list ):
-    for chrom in chrom_list:
-        
+def build_snp_structure( dict_list, SNPs, total_genomes ):
+    print 'creating SNPs data structure'
+    print '\ttotal_genomes: {}'.format( total_genomes )
+    print '\ttotal_chrom: {}'.format( len(dict_list.keys()) )
 
-
-
-
-    #for chrom in chrom_list:
-
-
-    #  print 'creating SNPs data structure'
     # initialize data structure to store lines from vcf file
-    #  SNPs = { p:  [None for x in xrange(len(infile))]  for p in xrange(int(dict_list[chrom]))}
-
+    SNPs = {chrom:  {p:  '.'*total_genomes  for p in xrange(int(dict_list[chrom]))}  for chrom in dict_list}
+    print 'size of dictionary: {}'.format( sys.getsizeof(SNPs) )
+    print 'done creating SNPs data structure'
 
 
 ################
@@ -121,11 +116,13 @@ def main( prog_name, argv ):
     # read .dict file
     read_dict_file(dict_file, dict_list, chrom_list)
 
+    build_snp_structure( dict_list, SNPs, len(infile) )
+
     for vcf_file in infile:
         print vcf_file
     
         get_offsets( chrom_offset, vcf_file, chrom_list )
-        with open( vcf_file, 'r' ) as vcf_fh:
+        #with open( vcf_file, 'r' ) as vcf_fh:
 
     #  print 'done creating SNPs data structure'
 
@@ -133,9 +130,8 @@ def main( prog_name, argv ):
     file_indnums = dict( zip( infile, xrange( len( infile ) ) ))
     
     # loop through vcf files
-    #  for vcf_file in infile:
-    #    read_vcf_file(vcf_file, SNPs, file_indnums[vcf_file])
-
+    for vcf_file in infile:
+        read_vcf_file(vcf_file, SNPs, file_indnums[vcf_file])
 
     print 'Done'
 
