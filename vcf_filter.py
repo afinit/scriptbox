@@ -68,6 +68,39 @@ def process_lowcomplex( variants, lc_ranges, variants_proc ):
         else:
             variants_proc[chrom] = variants[chrom]
 
+# filter out SNPs not meeting criteria of data points contained in INFO field
+def process_info_field( variants, variants_proc, mq, dp ):
+    print 'PROCESSING INFO FIELD CRITERIA'
+    
+    # set values that weren't specified to neutral values that won't filter anything out
+    if mq is None:
+        mq = 0
+    elif dp is None:
+        dp = 0
+
+    # initialize KeyError counter
+    keyerr = 0
+
+    # loop through chroms
+    for chrom in variants:
+        variants_proc[chrom] = []
+        
+        # loop through variants of current chrom
+        for v in variants[chrom]:
+            # parse INFO field
+            info_fields = dict(keypairs.split('=') for keypairs in v[7].split(';'))
+
+            # guard against keys not existing in INFO field.. altho this should never happen
+            try:
+                if float(info_fields['MQ']) >= mq and float(info_fields['DP']) >= dp:
+                    variants_proc[chrom].append( v )
+            except KeyError:
+                keyerr += 1
+
+    # alert user to keyerror occurrence 
+    if keyerr:
+        print 'Warning: {0} records were missing at least one key in the INFO field data'.format(keyerr)
+
 
 # write filtered SNPs to file
 def write_snps( outfile, vcf_header, variants, chrom_list ):
@@ -82,7 +115,7 @@ def write_snps( outfile, vcf_header, variants, chrom_list ):
 
 
 # remove SNPs failing to meet the limits set at runtime 
-def process_filters( variants, gff_file, mq, dp, gq, gt ):
+def run_filters( variants, gff_file, mq, dp, gq, gt ):
     if gff_file:
         # initialize holding variables for low complexity processing
         lc_ranges = {}
@@ -92,11 +125,11 @@ def process_filters( variants, gff_file, mq, dp, gq, gt ):
         process_lowcomplex( variants, lc_ranges, variants_proc )
         variants = variants_proc
 
-    if mq:
-        pass
-
-    if dp:
-        pass
+    # run filters on data in INFO field
+    if mq or dp:
+        variants_proc = {}
+        process_info_field( variants, variants_proc, mq, dp )
+        variants = variants_proc
 
     if gq:
         pass
@@ -156,7 +189,7 @@ def main( prog_name, argv ):
     get_variants( vcf_file, vcf_header, variants, chrom_list )
 
     # PROCESS FILTERS
-    variants = process_filters( variants, gff_file, mq, dp, gq, gt )
+    variants = run_filters( variants, gff_file, mq, dp, gq, gt )
 
     # WRITE FILTERED VARIANTS
     write_snps( outfile, vcf_header, variants, chrom_list )
