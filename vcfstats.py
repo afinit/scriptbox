@@ -9,6 +9,7 @@
 
 import os, sys
 import argparse
+from collections import Counter
 
 
 # process stats
@@ -47,6 +48,7 @@ def main( prog_name, argv ):
   mapq_stats = [0,0,float('inf'),-1.]
   genq_stats = [0,0,float('inf'),-1.]
   dpth_stats = [0,0,float('inf'),-1.]
+  dpth_values = []
   total_snps = 0
   gt = {}
 
@@ -78,6 +80,7 @@ def main( prog_name, argv ):
       # DEPTH
       if 'DP' in info_fields:
         proc_stats( dpth_stats, float(info_fields['DP']) )
+        dpth_values.append( info_fields['DP'] )
       else:
         dpth_stats[1] += 1
         if 0 < dpth_stats[2]:
@@ -99,16 +102,31 @@ def main( prog_name, argv ):
       else:
         print 'Error: GT field not present in vcf entry'
       
+      # GENOTYPE QUALITY
+      if 'GQ' in gt_fields:
+        proc_stats( genq_stats, float(gt_fields['GQ']) )
 
       line = fh.readline().split()
+
+  # calculate DP FreqDist
+  print 'COUNTING DP FREQ DIST'
+  dpth_freq_dist = Counter( dpth_values )
+  dpth_values_sorted = sorted( dpth_freq_dist.keys(), key=lambda k: int(k) )
+  with open( os.path.splitext(infile)[0] + '_dp.stats', 'w' ) as out_fh:
+    for i in xrange( int(dpth_values_sorted[-1]) + 1 ):
+      if str( i ) in dpth_freq_dist:
+        out_fh.write( str(dpth_freq_dist[str(i)]) + '\t' )
+      else:
+        out_fh.write( '0' + '\t' )
+    out_fh.write( '\n' )
 
 
   # print stats
   print 'VCF STATS'
-  print 'QUAL\t\t\tMQ  \t\t\tDP  \t\t\tGT'
-  print 'avg\tmin\tmax\tavg\tmin\tmax\tavg\tmin\tmax\tgt'
+  print 'SNP\tQUAL\t\t\tMQ  \t\t\tDP  \t\t\tGQ  \t\t\tGT'
+  print 'total\tavg\tmin\tmax\tavg\tmin\tmax\tavg\tmin\tmax\tavg\tmin\tgt'
   
-  data_out = ''
+  data_out = str(total_snps) + '\t'
 
   # QUAL
   data_out += str(qual_stats[0]/qual_stats[1]) + '\t' + str(qual_stats[2]) + '\t' + str(qual_stats[3]) + '\t'
@@ -118,6 +136,9 @@ def main( prog_name, argv ):
 
   # DEPTH
   data_out += str(dpth_stats[0]/dpth_stats[1]) + '\t' + str(dpth_stats[2]) + '\t' + str(dpth_stats[3]) + '\t'
+
+  # GENOTYPE QUALITY
+  data_out += str(genq_stats[0]/genq_stats[1]) + '\t' + str(genq_stats[2]) + '\t'
 
   # GENOTYPE
   for i in sorted(gt, key=lambda k: gt[k], reverse=True):
