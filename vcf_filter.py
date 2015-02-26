@@ -145,7 +145,7 @@ def main( prog_name, argv ):
 
     # set outfile if not specified
     if outfile is None:
-        outfile = os.path.splitext( vcf_file )[0] + '_lcfltrd.vcf'
+        outfile = os.path.splitext( vcf_file )[0] + '_filter.vcf'
 
     # INITIALIZE
     variants = {}
