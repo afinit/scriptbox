@@ -60,6 +60,10 @@ def main( argv ):
     print_usage()
   
   # check for dict index
+  if os.path.isfile(ref_file_base + '.dict'):
+    if os.path.getctime(ref_file_base + '.dict') < os.path.getctime(ref_file):
+      os.remove(ref_file_base + '.dict')
+    
   if not os.path.isfile(ref_file_base + '.dict'):
     print "Building dict index: " + ref_file_base + '.dict'
     try:
@@ -69,6 +73,10 @@ def main( argv ):
       print_usage()
 
   # check for faidx index
+  if os.path.isfile(ref_file + '.fai'):
+    if os.path.getctime(ref_file + '.fai') < os.path.getctime(ref_file):
+      os.remove(ref_file + '.fai')
+
   if not os.path.isfile(ref_file + '.fai'):
     print "Building faidx index: " + ref_file + '.fai'
     try:
