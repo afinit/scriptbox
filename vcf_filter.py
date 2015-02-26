@@ -101,6 +101,38 @@ def process_info_field( variants, variants_proc, mq, dp ):
     if keyerr:
         print 'Warning: {0} records were missing at least one key in the INFO field data'.format(keyerr)
 
+# filter out SNPs not meeting the criteria of data points contained in genotype information
+def process_genotype_field( variants, variants_proc, gq, gt ):
+    print 'PROCESSING GENOTYPE CRITERIA'
+
+    # set values that aren't specified to neutral values
+    if gq is None:
+        gq = 0
+    elif gt is None:
+        gt = []
+
+    # initialize KeyError counter
+    keyerr = 0
+
+    # loop through chroms
+    for chrom in variants:
+        variants_proc[chrom] = []
+
+        # loop through variants of current chrom
+        for v in variants[chrom]:
+            # parse GT field
+            gt_fields = dict(zip( v[8].split(':'), v[9].split(':') ))
+
+            # guard against keys not existing in INFO field.. altho this should never happen
+            try:
+                if float(gt_fields['GQ']) >= gq and not gt_fields['GT'] in gt:
+                    variants_proc[chrom].append(v)
+            except KeyError:
+                keyerr += 1
+
+    # alert user to keyerror occurrence 
+    if keyerr:
+        print 'Warning: {0} records were missing at least one key in the Genotype field data'.format(keyerr)
 
 # write filtered SNPs to file
 def write_snps( outfile, vcf_header, variants, chrom_list ):
@@ -131,12 +163,11 @@ def run_filters( variants, gff_file, mq, dp, gq, gt ):
         process_info_field( variants, variants_proc, mq, dp )
         variants = variants_proc
 
-    if gq:
-        pass
+    if gq or gt:
+        variants_proc = {}
+        process_genotype_field( variants, variants_proc, gq, gt )
+        variants = variants_proc
     
-    if gt:
-        pass
-
     return variants
 
 
@@ -152,7 +183,7 @@ def main( prog_name, argv ):
     parser.add_argument('-m','--mq', dest='mq', metavar='MQ', type=float, help='minimum mapping quality filter')
     parser.add_argument('-d','--dp', dest='dp', metavar='DP', type=float, help='minimum DP value filter')
     parser.add_argument('-q','--gq', dest='gq', metavar='GQ', type=float, help='minimum GQ value filter')
-    parser.add_argument('-t','--gt', dest='gt', metavar='GT', type=str, help='genotype to filter out in gt format( eg, 0/1 )')
+    parser.add_argument('-t','--gt', dest='gt', metavar='GT', type=str, action='append', help='genotype to filter out in gt format( eg, 0/1 )')
     parser.add_argument('-o','--outfile', dest='outfile', metavar='OUTFILE', type=str, help='output file to write to')
     args = parser.parse_args(argv)
 
