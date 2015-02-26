@@ -48,9 +48,9 @@ def get_lc_ranges( gff_file, lc_ranges ):
 
         while line != []:
             if not line[0] in lc_ranges:
-                lc_ranges[line[0]] = []
+                lc_ranges[line[0]] = set()
 
-            lc_ranges[line[0]].append( (int(line[3]), int(line[4])+1) )
+            lc_ranges[line[0]] = lc_ranges[line[0]].union( xrange(int(line[3]), int(line[4])+1) )
             line = gff_fh.readline().split()
 
 # process low complexity regions
@@ -62,17 +62,12 @@ def process_lowcomplex( variants, lc_ranges, variants_proc ):
         # if chrom has a low complexity range, check all of the snps against it/them
         if chrom in lc_ranges:
             for v in variants[chrom]:
-                for rng in lc_ranges[chrom]:
-                    if int(v[1]) <= rng[0]:
-                        variants_proc[chrom].append(v)
-                        break
-                    if int(v[1]) < rng[1]:
-                        break
-                else:
-                    variants_proc[chrom].append(v)
+                if not int(v[1]) in lc_ranges[chrom]:
+                    variants_proc[chrom].append( v )
         # if chrom does not have a low complexity range, add all of the snps from chrom
         else:
             variants_proc[chrom] = variants[chrom]
+
 
 # write filtered SNPs to file
 def write_snps( outfile, vcf_header, variants, chrom_list ):
