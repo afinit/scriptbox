@@ -16,9 +16,10 @@ import argparse
 ## FILTER CLASS ##
 ##################
 class Filter:
-    def __init__(self, gff_file, mq, dp, gq, gt, no_count ):
+    def __init__(self, gff_file, indel, mq, dp, gq, gt, no_count ):
         # set initialize user set variables
         self.gff_file = gff_file
+        self.indel = indel
         self.mq = mq
         self.dp = dp
         self.gq = gq
@@ -34,6 +35,7 @@ class Filter:
 
         # create variables for counting removed SNPs
         self.lc_rem_count = None
+        self.indel_rem_count = None
         self.mq_rem_count = None
         self.dp_rem_count = None
         self.gq_rem_count = None
@@ -44,6 +46,10 @@ class Filter:
             # low complexity removal counting
             if gff_file:
                 self.lc_rem_count = 0
+
+            # indel removal counting
+            if indel:
+                self.indel_rem_count = 0
 
             # MQ removal counting
             if mq:
@@ -115,7 +121,7 @@ class Filter:
         for chrom in self.variants:
             variants_proc[chrom] = []
 
-            # if chrom has a low complexity range, check all of the snps against it/them
+            # if chrom has a low complexity range(s), check all of the snps against it/them
             if chrom in self.lc_ranges:
                 for v in self.variants[chrom]:
                     if not int(v[1]) in self.lc_ranges[chrom]:
@@ -125,6 +131,19 @@ class Filter:
             # if chrom does not have a low complexity range, add all of the snps from chrom
             else:
                 variants_proc[chrom] = self.variants[chrom]
+
+    # process indel filter (remove indels)
+    def process_indel( self, variants_proc ):
+      print 'REMOVING INDELS'
+      for chrom in self.variants:
+          variants_proc[chrom] = []
+
+          for v in self.variants[chrom]:
+              if len(v[3]) == 1 and len(v[4]) == 1:
+                  variants_proc[chrom].append( v )
+              else:
+                  if not self.indel_rem_count is None:
+                      self.indel_rem_count += 1
 
     # filter out SNPs not meeting criteria of data points contained in INFO field
     def process_info_field( self, variants_proc ):
@@ -237,6 +256,9 @@ class Filter:
         if not self.lc_rem_count is None:
             total_removed += self.lc_rem_count
             print '\tLow Complexity: {0}'.format( self.lc_rem_count )
+        if not self.indel_rem_count is None:
+            total_removed += self.indel_rem_count
+            print '\tIndels: {0}'.format( self.indel_rem_count )
         if not self.mq_rem_count is None:
             total_removed += self.mq_rem_count
             print '\tMapping Quality: {0}'.format( self.mq_rem_count )
@@ -266,12 +288,19 @@ class Filter:
             self.process_lowcomplex( variants_proc )
             self.variants = variants_proc
 
+        # process indel removal filter
+        if self.indel:
+            variants_proc = {}
+            self.process_indel( variants_proc )
+            self.variants = variants_proc
+
         # run filters on data in INFO field
         if self.mq or self.dp:
             variants_proc = {}
             self.process_info_field( variants_proc )
             self.variants = variants_proc
 
+        # run filters on data in genotype field
         if self.gq or self.gt:
             variants_proc = {}
             self.process_genotype_field( variants_proc )
@@ -287,17 +316,19 @@ def main( prog_name, argv ):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter )
     parser.add_argument('-i','--vcf_file', dest='vcf_file', metavar='VCF_FILE', type=str, required=True, help='file containing SNPs and other variants to be processed')
     parser.add_argument('-g','--gff_file', dest='gff_file', metavar='GFF_FILE', type=str, help='annotation file containing the list of ranges specified as low complexity by RepeatMasker')
+    parser.add_argument('-z','--indel', dest='indel', action='store_true', default=False, help='indel removal switch')
     parser.add_argument('-m','--mq', dest='mq', metavar='MQ', type=float, help='minimum mapping quality filter')
     parser.add_argument('-d','--dp', dest='dp', metavar='DP', type=float, help='minimum DP value filter')
     parser.add_argument('-q','--gq', dest='gq', metavar='GQ', type=float, help='minimum GQ value filter')
     parser.add_argument('-t','--gt', dest='gt', metavar='GT', type=str, action='append', help='genotype to filter out in gt format( eg, 0/1 )')
-    parser.add_argument('-n','--no_count', dest='no_count', action='store_true', default=False, help='suppress the removal counting and its output')
+    parser.add_argument('-n','--no_count', dest='no_count', action='store_true', default=False, help='suppress removal counting and its output')
     parser.add_argument('-o','--outfile', dest='outfile', metavar='OUTFILE', type=str, help='output file to write to')
     args = parser.parse_args(argv)
 
     # SET VARIBLES FROM COMMAND LINE ARGS
     vcf_file = args.vcf_file
     gff_file = args.gff_file
+    indel = args.indel
     mq = args.mq
     dp = args.dp
     gq = args.gq
@@ -321,7 +352,7 @@ def main( prog_name, argv ):
         outfile = os.path.splitext( vcf_file )[0] + '_filter.vcf'
 
     # initialize Filter object
-    fltr = Filter( gff_file, mq, dp, gq, gt, no_count )
+    fltr = Filter( gff_file, indel, mq, dp, gq, gt, no_count )
 
     # READ VARIANTS
     fltr.get_variants( vcf_file )
